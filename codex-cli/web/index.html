@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Codex Chat</title>
+<style>
+body { font-family: sans-serif; margin: 1em; }
+#chat { border: 1px solid #ccc; padding: 1em; height: 300px; overflow-y: auto; }
+</style>
+</head>
+<body>
+<h1>Codex Chat</h1>
+<div id="chat"></div>
+<form id="form">
+  <input id="input" autocomplete="off" placeholder="Type a message..." style="width:80%;" />
+  <button type="submit">Send</button>
+</form>
+<script>
+const chat = document.getElementById('chat');
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const message = input.value;
+  if (!message) return;
+  const userElem = document.createElement('div');
+  userElem.textContent = 'You: ' + message;
+  chat.appendChild(userElem);
+  input.value = '';
+  const res = await fetch('/api/message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message })
+  });
+  const data = await res.json();
+  const botElem = document.createElement('div');
+  botElem.textContent = 'Codex: ' + (data.reply || data.error);
+  chat.appendChild(botElem);
+  chat.scrollTop = chat.scrollHeight;
+});
+</script>
+</body>
+</html>
