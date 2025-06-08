@@ -57,12 +57,18 @@ if (isDevBuild) {
     name: "dev-shebang",
     setup(build) {
       build.onEnd(async () => {
-        const outFile = path.resolve(isDevBuild ? `${OUT_DIR}/cli-dev.js` : `${OUT_DIR}/cli.js`);
-        let code = await fs.promises.readFile(outFile, "utf8");
-        if (code.startsWith("#!")) {
-          code = code.replace(/^#!.*\n/, devShebangLine);
-          await fs.promises.writeFile(outFile, code, "utf8");
-        }
+        const files = [
+          path.resolve(isDevBuild ? `${OUT_DIR}/cli-dev.js` : `${OUT_DIR}/cli.js`),
+          path.resolve(isDevBuild ? `${OUT_DIR}/web-dev.js` : `${OUT_DIR}/web.js`),
+        ];
+        await Promise.all(files.map(async (outFile) => {
+          if (!fs.existsSync(outFile)) return;
+          let code = await fs.promises.readFile(outFile, "utf8");
+          if (code.startsWith("#!")) {
+            code = code.replace(/^#!.*\n/, devShebangLine);
+            await fs.promises.writeFile(outFile, code, "utf8");
+          }
+        }));
       });
     },
   };
@@ -71,7 +77,11 @@ if (isDevBuild) {
 
 esbuild
   .build({
-    entryPoints: ["src/cli.tsx"],
+    entryPoints: {
+      cli: "src/cli.tsx",
+      web: "src/web.tsx",
+    },
+    outdir: OUT_DIR,
     // Do not bundle the contents of package.json at build time: always read it
     // at runtime.
     external: ["../package.json"],
@@ -79,7 +89,6 @@ esbuild
     format: "esm",
     platform: "node",
     tsconfig: "tsconfig.json",
-    outfile: isDevBuild ? `${OUT_DIR}/cli-dev.js` : `${OUT_DIR}/cli.js`,
     minify: !isDevBuild,
     sourcemap: isDevBuild ? "inline" : true,
     plugins,

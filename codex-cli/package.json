@@ -3,7 +3,8 @@
   "version": "0.0.0-dev",
   "license": "Apache-2.0",
   "bin": {
-    "codex": "bin/codex.js"
+    "codex": "bin/codex.js",
+    "codex-web": "bin/codex-web.js"
   },
   "type": "module",
   "engines": {
@@ -20,6 +21,7 @@
     "typecheck": "tsc --noEmit",
     "build": "node build.mjs",
     "build:dev": "NODE_ENV=development node build.mjs --dev && NODE_OPTIONS=--enable-source-maps node dist/cli-dev.js",
+    "web": "node dist/web.js",
     "stage-release": "./scripts/stage_release.sh"
   },
   "files": [
