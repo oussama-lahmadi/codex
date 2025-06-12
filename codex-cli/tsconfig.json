@@ -12,7 +12,7 @@
     "types": ["node"],
     "baseUrl": "./",
     "resolveJsonModule": true, // ESM doesn't yet support JSON modules.
-    "jsx": "react",
+    "jsx": "react-jsx",
     "declaration": true,
     "newLine": "lf",
     "stripInternal": true,
