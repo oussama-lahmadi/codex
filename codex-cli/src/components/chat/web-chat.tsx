@@ -1,45 +1,41 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type {
-  ResponseItem,
-  ResponseInputItem,
-} from 'openai/resources/responses/responses';
-import { AgentLoop } from '../../utils/agent/agent-loop';
-import { ReviewDecision } from '../../utils/agent/review';
-import type { ApprovalPolicy } from '../../approvals';
+import type { ResponseItem } from 'openai/resources/responses/responses';
+import { randomUUID } from 'node:crypto';
 
 export default function WebChat(): JSX.Element {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ResponseItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastResponseId, setLastResponseId] = useState('');
-  const agentRef = useRef<AgentLoop | null>(null);
+  const sessionIdRef = useRef('');
 
-  // Create the agent loop once on mount
   useEffect(() => {
-    const approvalPolicy: ApprovalPolicy = 'suggest';
-    const agent = new AgentLoop({
-      model: 'gpt-4',
-      approvalPolicy,
-      additionalWritableRoots: [],
-      onItem: (item) => setMessages((prev) => [...prev, item]),
-      onLoading: setLoading,
-      getCommandConfirmation: async () => ({ review: ReviewDecision.YES }),
-      onLastResponseId: setLastResponseId,
-    });
-    agentRef.current = agent;
-    return () => agent.terminate();
+    sessionIdRef.current = randomUUID();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = prompt.trim();
-    if (!text || !agentRef.current) return;
-    const inputItem: ResponseInputItem.Message = {
-      type: 'message',
-      role: 'user',
-      content: [{ type: 'input_text', text }],
-    };
-    agentRef.current.run([inputItem], lastResponseId);
+    if (!text) return;
+    setLoading(true);
+    try {
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionIdRef.current,
+          text,
+        }),
+      });
+      const data = (await resp.json()) as {
+        items: ResponseItem[];
+        lastResponseId: string;
+      };
+      setMessages((prev) => [...prev, ...data.items]);
+      setLastResponseId(data.lastResponseId);
+    } finally {
+      setLoading(false);
+    }
     setPrompt('');
   };
 
