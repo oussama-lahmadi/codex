@@ -1,13 +1,45 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import type {
+  ResponseItem,
+  ResponseInputItem,
+} from 'openai/resources/responses/responses';
+import { AgentLoop } from '../../utils/agent/agent-loop';
+import { ReviewDecision } from '../../utils/agent/review';
+import type { ApprovalPolicy } from '../../approvals';
 
 export default function WebChat(): JSX.Element {
   const [prompt, setPrompt] = useState('');
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<ResponseItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [lastResponseId, setLastResponseId] = useState('');
+  const agentRef = useRef<AgentLoop | null>(null);
+
+  // Create the agent loop once on mount
+  useEffect(() => {
+    const approvalPolicy: ApprovalPolicy = 'suggest';
+    const agent = new AgentLoop({
+      model: 'gpt-4',
+      approvalPolicy,
+      additionalWritableRoots: [],
+      onItem: (item) => setMessages((prev) => [...prev, item]),
+      onLoading: setLoading,
+      getCommandConfirmation: async () => ({ review: ReviewDecision.YES }),
+      onLastResponseId: setLastResponseId,
+    });
+    agentRef.current = agent;
+    return () => agent.terminate();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (prompt.trim() === '') return;
-    setMessages((prev) => [...prev, prompt]);
+    const text = prompt.trim();
+    if (!text || !agentRef.current) return;
+    const inputItem: ResponseInputItem.Message = {
+      type: 'message',
+      role: 'user',
+      content: [{ type: 'input_text', text }],
+    };
+    agentRef.current.run([inputItem], lastResponseId);
     setPrompt('');
   };
 
@@ -16,8 +48,11 @@ export default function WebChat(): JSX.Element {
       <h1>Codex Web Chat</h1>
       <div style={{ minHeight: '200px', border: '1px solid #ccc', padding: '0.5rem', marginBottom: '1rem' }}>
         {messages.map((m, idx) => (
-          <p key={idx}>{m}</p>
+          <pre key={idx} style={{ whiteSpace: 'pre-wrap' }}>
+            {JSON.stringify(m, null, 2)}
+          </pre>
         ))}
+        {loading && <p>Thinking…</p>}
       </div>
       <form onSubmit={handleSubmit}>
         <input
